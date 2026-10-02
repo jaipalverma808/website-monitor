@@ -11,7 +11,7 @@ def get_all_websites(include_disabled=True):
     """Retrieves all monitored websites."""
     if include_disabled:
         return query_db("SELECT * FROM websites ORDER BY id ASC")
-    return query_db("SELECT * FROM websites WHERE enabled = 1 OR enabled = true ORDER BY id ASC")
+    return query_db("SELECT * FROM websites WHERE enabled ORDER BY id ASC")
 
 
 def get_website_by_id(site_id):
@@ -146,9 +146,9 @@ def get_website_stats(site_id):
     totals = query_db("""
         SELECT 
             COUNT(*) as total_checks,
-            SUM(CASE WHEN is_success = true OR is_success = 1 THEN 1 ELSE 0 END) as successful_checks,
-            SUM(CASE WHEN is_success = false OR is_success = 0 THEN 1 ELSE 0 END) as failed_checks,
-            AVG(CASE WHEN is_success = true OR is_success = 1 THEN response_time_ms ELSE NULL END) as avg_response_time
+            SUM(CASE WHEN is_success THEN 1 ELSE 0 END) as successful_checks,
+            SUM(CASE WHEN NOT is_success THEN 1 ELSE 0 END) as failed_checks,
+            AVG(CASE WHEN is_success THEN response_time_ms ELSE NULL END) as avg_response_time
         FROM check_logs
         WHERE website_id = %s
     """, (site_id,), one=True)
