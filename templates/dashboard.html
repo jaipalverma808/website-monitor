@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Monitored Websites</h1>
+        <p class="page-subtitle">Real-time status overview and keep-alive health metrics.</p>
+    </div>
+    <div class="page-actions">
+        <button class="btn btn-primary" onclick="toggleAddModal(true)">+ Add Website</button>
+    </div>
+</div>
+
+<!-- Summary Metric Cards -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-label">Total Websites</div>
+        <div class="stat-value">{{ summary.total }}</div>
+        <div class="stat-meta">Configured targets</div>
+    </div>
+    <div class="stat-card stat-card-online">
+        <div class="stat-label">Online</div>
+        <div class="stat-value text-success">{{ summary.online }}</div>
+        <div class="stat-meta">Responding normally</div>
+    </div>
+    <div class="stat-card stat-card-warning">
+        <div class="stat-label">Warning</div>
+        <div class="stat-value text-warning">{{ summary.warning }}</div>
+        <div class="stat-meta">&lt; threshold failures</div>
+    </div>
+    <div class="stat-card stat-card-offline">
+        <div class="stat-label">Offline</div>
+        <div class="stat-value text-danger">{{ summary.offline }}</div>
+        <div class="stat-meta">Consecutive failures</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Disabled</div>
+        <div class="stat-value text-muted">{{ summary.disabled }}</div>
+        <div class="stat-meta">Monitoring paused</div>
+    </div>
+</div>
+
+<!-- Websites Table -->
+<div class="card table-card">
+    <div class="card-header">
+        <h2 class="card-title">Website Targets</h2>
+        <span class="card-meta">Database: {% if is_postgres %}PostgreSQL (Shared){% else %}SQLite (Local){% endif %}</span>
+    </div>
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Website</th>
+                    <th>Status</th>
+                    <th>HTTP Status</th>
+                    <th>Response Time</th>
+                    <th>Last Check</th>
+                    <th>Last Successful Check</th>
+                    <th>Failures</th>
+                    <th class="text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for site in websites %}
+                <tr class="{% if not site.enabled %}row-disabled{% endif %}">
+                    <td>
+                        <div class="site-identity">
+                            <a href="{{ url_for('website_details', site_id=site.id) }}" class="site-name">
+                                {{ site.name }}
+                            </a>
+                            <div class="site-links">
+                                <a href="{{ site.website_url }}" target="_blank" rel="noopener" class="external-link" title="Open live website">
+                                    {{ site.website_url }}
+                                </a>
+                                {% if site.github_repo %}
+                                    <span class="link-separator">&bull;</span>
+                                    <a href="{{ site.github_repo }}" target="_blank" rel="noopener" class="repo-link" title="View GitHub repository">
+                                        GitHub
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        {% if not site.enabled %}
+                            <span class="status-badge badge-disabled">DISABLED</span>
+                        {% elif site.last_status == 'ONLINE' %}
+                            <span class="status-badge badge-online">ONLINE</span>
+                        {% elif site.last_status == 'WARNING' %}
+                            <span class="status-badge badge-warning">WARNING</span>
+                        {% elif site.last_status == 'OFFLINE' %}
+                            <span class="status-badge badge-offline">OFFLINE</span>
+                        {% else %}
+                            <span class="status-badge badge-unknown">UNKNOWN</span>
+                        {% endif %}
+                    </td>
+                    <td class="tabular-num">
+                        {% if site.last_http_status %}
+                            <span class="http-code http-{{ (site.last_http_status // 100) }}xx">
+                                {{ site.last_http_status }}
+                            </span>
+                        {% else %}
+                            <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                    <td class="tabular-num">
+                        {% if site.last_response_time_ms is not none %}
+                            {{ site.last_response_time_ms }} ms
+                        {% else %}
+                            <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-muted">
+                        {{ site.last_check_at|time_ago }}
+                    </td>
+                    <td class="text-muted">
+                        {{ site.last_success_at|time_ago }}
+                    </td>
+                    <td class="tabular-num">
+                        {% if site.consecutive_failures > 0 %}
+                            <span class="text-danger font-semibold">{{ site.consecutive_failures }}</span>
+                        {% else %}
+                            <span class="text-muted">0</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-right table-actions">
+                        <div class="action-btn-group">
+                            <form action="{{ url_for('api_test_website', site_id=site.id) }}" method="POST" class="inline-form">
+                                <button type="submit" class="btn btn-xs btn-outline" title="Trigger an immediate check">Test</button>
+                            </form>
+                            <a href="{{ url_for('website_details', site_id=site.id) }}" class="btn btn-xs btn-outline">Details</a>
+                            <form action="{{ url_for('api_toggle_website', site_id=site.id) }}" method="POST" class="inline-form">
+                                <button type="submit" class="btn btn-xs btn-outline" title="Enable or disable monitoring">
+                                    {% if site.enabled %}Disable{% else %}Enable{% endif %}
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" class="text-center empty-state">
+                        No websites configured yet. Click "+ Add Website" to begin monitoring.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Recent Check Activity Log -->
+<div class="card mt-4">
+    <div class="card-header">
+        <h2 class="card-title">Recent Check Activity</h2>
+        <span class="card-meta">Last 10 recorded requests</span>
+    </div>
+    <div class="table-responsive">
+        <table class="data-table data-table-compact">
+            <thead>
+                <tr>
+                    <th>Timestamp (UTC)</th>
+                    <th>Website</th>
+                    <th>Target Checked</th>
+                    <th>Status</th>
+                    <th>HTTP</th>
+                    <th>Latency</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in recent_logs %}
+                <tr>
+                    <td class="text-muted">{{ log.checked_at|format_date }}</td>
+                    <td><strong>{{ log.website_name }}</strong></td>
+                    <td class="text-mono text-truncate">{{ log.target_url }}</td>
+                    <td>
+                        <span class="status-badge status-badge-sm badge-{{ log.status_result|lower }}">
+                            {{ log.status_result }}
+                        </span>
+                    </td>
+                    <td class="tabular-num">{{ log.http_status or '-' }}</td>
+                    <td class="tabular-num">{% if log.response_time_ms is not none %}{{ log.response_time_ms }} ms{% else %}-{% endif %}</td>
+                    <td class="text-muted">{{ log.error_message or 'Success' }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center empty-state">
+                        No check logs recorded yet. Run a check to generate history.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add Website Modal -->
+<div id="add-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Add Website to Monitor</h3>
+            <button type="button" class="modal-close" onclick="toggleAddModal(false)">&times;</button>
+        </div>
+        <form action="{{ url_for('api_add_website') }}" method="POST">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="name" class="form-label">Website Name <span class="required">*</span></label>
+                    <input type="text" id="name" name="name" class="form-input" placeholder="e.g. ResumeForge" required>
+                </div>
+                <div class="form-group">
+                    <label for="website_url" class="form-label">Website Home URL <span class="required">*</span></label>
+                    <input type="url" id="website_url" name="website_url" class="form-input" placeholder="https://theresumeforge.onrender.com/" required>
+                </div>
+                <div class="form-group">
+                    <label for="health_url" class="form-label">Health Check URL <span class="optional">(optional)</span></label>
+                    <input type="url" id="health_url" name="health_url" class="form-input" placeholder="https://theresumeforge.onrender.com/health">
+                    <small class="form-help">If provided, the monitor sends lightweight keep-alive requests here first.</small>
+                </div>
+                <div class="form-group">
+                    <label for="github_repo" class="form-label">GitHub Repository URL <span class="optional">(optional)</span></label>
+                    <input type="url" id="github_repo" name="github_repo" class="form-input" placeholder="https://github.com/jaipalverma808/ResumeForge">
+                </div>
+                <div class="form-group">
+                    <label for="failure_threshold" class="form-label">Failure Threshold</label>
+                    <input type="number" id="failure_threshold" name="failure_threshold" class="form-input" value="3" min="1" max="10">
+                    <small class="form-help">Number of consecutive failures before status switches from Warning to Offline.</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="toggleAddModal(false)">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Website</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

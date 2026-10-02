@@ -1,0 +1,54 @@
+name: Website Keep-Alive and Uptime Monitor
+
+on:
+  # Scheduled execution every 10 minutes
+  # Free tier Render services sleep after 15 minutes of inactivity
+  schedule:
+    - cron: '*/10 * * * *'
+
+  # Manual execution trigger from GitHub UI
+  workflow_dispatch:
+    inputs:
+      site_id:
+        description: 'Optional Website ID to monitor (leave empty to check all)'
+        required: false
+        default: ''
+
+concurrency:
+  group: monitoring-run
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    name: Run Keep-Alive & Health Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Execute Monitoring Engine
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          REQUEST_TIMEOUT: '35'
+          FAILURE_THRESHOLD: '3'
+        run: |
+          if [ -n "${{ github.event.inputs.site_id }}" ]; then
+            echo "Checking specific website ID: ${{ github.event.inputs.site_id }}"
+            python monitor.py --site-id "${{ github.event.inputs.site_id }}"
+          else
+            echo "Executing keep-alive and health check for all enabled websites..."
+            python monitor.py
+          fi

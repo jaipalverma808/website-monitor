@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Login{% endblock %}
+
+{% block content %}
+<div class="login-wrapper">
+    <div class="card login-card">
+        <div class="card-header">
+            <h2 class="card-title">Dashboard Admin Login</h2>
+        </div>
+        <form method="POST" action="{{ url_for('login', next=request.args.get('next')) }}">
+            <div class="card-body">
+                <div class="form-group">
+                    <label for="username" class="form-label">Username</label>
+                    <input type="text" id="username" name="username" class="form-input" placeholder="admin" required autofocus>
+                </div>
+                <div class="form-group">
+                    <label for="password" class="form-label">Password</label>
+                    <input type="password" id="password" name="password" class="form-input" placeholder="Enter admin password" required>
+                </div>
+            </div>
+            <div class="card-footer">
+                <button type="submit" class="btn btn-primary btn-block">Sign In</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
