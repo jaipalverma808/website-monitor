@@ -71,6 +71,26 @@ def check_single_website(site, timeout=None):
         # Accept 2xx and 3xx as reachable/online responses
         if 200 <= http_status < 400:
             is_success = True
+        elif http_status in (502, 503, 504):
+            # Render cold boot blip: wait 3 seconds and retry once
+            logger.info(f"Received HTTP {http_status} for {site_name}; retrying once after 3s (cold boot recovery)...")
+            time.sleep(3)
+            try:
+                retry_resp = requests.get(target_url, headers=headers, timeout=timeout, allow_redirects=True)
+                http_status = retry_resp.status_code
+                elapsed_sec = time.time() - start_time
+                response_time_ms = int(elapsed_sec * 1000)
+                if 200 <= http_status < 400:
+                    is_success = True
+                    error_message = None
+                else:
+                    is_success = False
+                    error_message = f"HTTP {http_status} returned (after cold-boot retry)"
+            except Exception as re:
+                elapsed_sec = time.time() - start_time
+                response_time_ms = int(elapsed_sec * 1000)
+                is_success = False
+                error_message = f"Cold boot retry failed: {re}"
         elif http_status == 404 and site.get("website_url") and target_url != site.get("website_url"):
             # If health endpoint returns 404 (e.g. deployment building), fallback to website_url
             try:

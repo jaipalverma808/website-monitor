@@ -42,7 +42,13 @@ INITIAL_WEBSITES = [
 def get_connection():
     """Yields a database connection and handles commit/rollback cleanly."""
     if IS_POSTGRES:
-        conn = psycopg2.connect(DATABASE_URL)
+        try:
+            conn = psycopg2.connect(DATABASE_URL)
+        except Exception as conn_err:
+            raise RuntimeError(
+                f"FATAL: Could not establish connection to PostgreSQL. Error: {conn_err}. "
+                "Please verify that DATABASE_URL is valid and network access is permitted."
+            ) from conn_err
         try:
             yield conn
             conn.commit()

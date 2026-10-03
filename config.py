@@ -16,8 +16,18 @@ if RAW_DATABASE_URL.startswith("postgres://"):
 else:
     DATABASE_URL = RAW_DATABASE_URL
 
-# Default to local SQLite if no PostgreSQL URL is configured
+# Default to local SQLite if no PostgreSQL URL is configured,
+# but enforce PostgreSQL when REQUIRE_POSTGRES is enabled.
+REQUIRE_POSTGRES = os.getenv("REQUIRE_POSTGRES", "false").lower() in ("true", "1", "yes")
 IS_POSTGRES = bool(DATABASE_URL and DATABASE_URL.startswith("postgresql://"))
+
+if REQUIRE_POSTGRES and not IS_POSTGRES:
+    raise RuntimeError(
+        "FATAL: Production monitoring requires a valid PostgreSQL DATABASE_URL. "
+        "SQLite fallback is disabled when REQUIRE_POSTGRES=true. "
+        "Please ensure DATABASE_URL is properly configured in your environment or GitHub Secrets."
+    )
+
 SQLITE_PATH = BASE_DIR / "data" / "monitor.db"
 
 # Flask Settings

@@ -3,6 +3,9 @@ Automated Test Suite for Website Uptime & Keep-Alive Monitoring System.
 Verifies CRUD operations, timeout handling, connection failures, status transitions,
 one-site-failing resilience, and Flask dashboard endpoints.
 """
+import os
+os.environ["DATABASE_URL"] = ""
+os.environ["REQUIRE_POSTGRES"] = "false"
 import unittest
 from unittest.mock import patch, MagicMock
 import requests

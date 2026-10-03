@@ -22,7 +22,7 @@ jobs:
   monitor:
     name: Run Keep-Alive & Health Checks
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
 
     steps:
       - name: Check out repository
@@ -42,6 +42,7 @@ jobs:
       - name: Execute Monitoring Engine
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          REQUIRE_POSTGRES: 'true'
           REQUEST_TIMEOUT: '35'
           FAILURE_THRESHOLD: '3'
         run: |
