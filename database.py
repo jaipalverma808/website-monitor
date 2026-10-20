@@ -10,30 +10,14 @@ from contextlib import contextmanager
 from config import DATABASE_URL, IS_POSTGRES, SQLITE_PATH, FAILURE_THRESHOLD
 
 # Initial website catalog required by the system
+# SmartMineGuard and Stories Hub removed to conserve Render free tier hours.
+# Only ResumeForge is actively kept alive 24/7.
 INITIAL_WEBSITES = [
-    {
-        "name": "SmartMineGuard",
-        "website_url": "https://smartmineguard.onrender.com/",
-        "health_url": "https://smartmineguard.onrender.com/health",
-        "github_repo": "https://github.com/jaipalverma808/smartmineguard",
-    },
     {
         "name": "ResumeForge",
         "website_url": "https://theresumeforge.onrender.com/",
         "health_url": "https://theresumeforge.onrender.com/health",
         "github_repo": "https://github.com/jaipalverma808/ResumeForge",
-    },
-    {
-        "name": "Stories Hub",
-        "website_url": "https://stories-hub.onrender.com/",
-        "health_url": "https://stories-hub.onrender.com/health",
-        "github_repo": "https://github.com/jaipalverma808/Stories-hub",
-    },
-    {
-        "name": "Stories Hub Bot",
-        "website_url": "https://stories-hub-bot-u57q.onrender.com/",
-        "health_url": None,
-        "github_repo": "https://github.com/jaipalverma808/stories-hub-bot",
     }
 ]
 
@@ -212,3 +196,16 @@ def init_db():
                 site["name"], site["website_url"], site["health_url"],
                 site["github_repo"], True, FAILURE_THRESHOLD
             ))
+
+    # Deactivate / remove SmartMineGuard and Stories Hub so the keep-alive cron job stops pinging them
+    try:
+        execute_db("""
+            DELETE FROM websites 
+            WHERE LOWER(name) LIKE '%smartmineguard%' 
+               OR LOWER(name) LIKE '%stories hub%' 
+               OR LOWER(name) LIKE '%stories-hub%'
+               OR LOWER(website_url) LIKE '%smartmineguard%' 
+               OR LOWER(website_url) LIKE '%stories-hub%'
+        """)
+    except Exception:
+        pass
