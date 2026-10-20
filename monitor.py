@@ -180,6 +180,7 @@ def run_monitor(site_id=None):
     """
     Loads all enabled websites (or single specified site),
     executes checks sequentially, and ensures one failure never stops others.
+    Filters out any services where keep-alive has been stopped to conserve Render hours.
     """
     init_db()
 
@@ -200,6 +201,14 @@ def run_monitor(site_id=None):
 
     results = []
     for site in websites:
+        # Safety filter: Never ping SmartMineGuard or Stories Hub (keep-alive disabled per user request)
+        site_name_lower = (site.get("name") or "").lower()
+        site_url_lower = (site.get("website_url") or "").lower()
+        if "smartmineguard" in site_name_lower or "stories" in site_name_lower or \
+           "smartmineguard" in site_url_lower or "stories-hub" in site_url_lower:
+            logger.info(f"Skipping {site.get('name')}: keep-alive disabled to conserve Render free hours.")
+            continue
+
         try:
             res = check_single_website(site)
             if res:
