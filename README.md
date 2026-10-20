@@ -24,14 +24,13 @@ Designed specifically for modern cloud services (such as Render) where backgroun
                               | Scheduled cron (every 10 minutes)
                               v
                    Monitoring Script (monitor.py)
-                     /      |      \      \
-                    /       |       \      \
-                   v        v        v      v
-              SmartMine  Resume  Stories  Stories
-                Guard    Forge     Hub    Hub Bot
-                   \        |       /       /
-                    \       |      /       /
-                     v      v     v       v
+                              |
+                              v
+                 ResumeForge (24/7 Keep-Alive)
+               [SmartMineGuard & Stories Hub excluded
+                 to conserve Render free tier quota]
+                              |
+                              v
                    Shared PostgreSQL Database
                               ^
                               |
@@ -220,7 +219,7 @@ python monitor.py --site-id 2
 ## 12. Limitations & Disclosures
 
 > [!IMPORTANT]
-> **Keep-Alive &ne; 100% Uptime Guarantee**
+> **Keep-Alive ≠ 100% Uptime Guarantee**
 > - **Cold Start Mitigation:** Keep-alive requests prevent services from sleeping due to inactivity. However, if a service *does* go to sleep between checks, the first request may take 20–45 seconds to respond.
 > - **Platform Outages:** If Render or another cloud provider suffers an infrastructure failure, network routing issues, or database outages, scheduled pings cannot keep the service operational.
 > - **Deployment Downtime:** While a new build is deploying, the endpoint may temporarily return HTTP 502 or 503 until container initialization is complete.
